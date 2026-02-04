@@ -1,0 +1,105 @@
+@startuml Diagrama de Casos de Uso - SRAP
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Empleado" as emp
+actor "Supervisor" as sup
+actor "Administrador" as admin
+actor "Lector NFC" as nfc
+
+sup --|> emp : extiende
+admin --|> sup : extiende
+
+rectangle "Sistema de Registro de Asistencia" {
+    
+    package "Autenticación" {
+        usecase "Iniciar Sesión" as UC_LOGIN
+        usecase "Cerrar Sesión" as UC_LOGOUT
+    }
+    
+    package "Gestión de Asistencia" {
+        usecase "Registrar Entrada/Salida NFC" as UC_NFC
+        usecase "Registrar Asistencia Manual" as UC_MANUAL
+        usecase "Consultar Mis Asistencias" as UC_MIS_ASIST
+        usecase "Consultar Asistencias General" as UC_ASIST_GEN
+        usecase "Generar Faltas Automáticas" as UC_FALTAS
+    }
+    
+    package "Gestión de Empleados" {
+        usecase "Registrar Empleado" as UC_REG_EMP
+        usecase "Consultar Empleados" as UC_CON_EMP
+        usecase "Modificar Empleado" as UC_MOD_EMP
+        usecase "Desactivar Empleado" as UC_DES_EMP
+    }
+    
+    package "Gestión de Horarios" {
+        usecase "Asignar Horario" as UC_ASIG_HOR
+        usecase "Modificar Horario" as UC_MOD_HOR
+        usecase "Consultar Horarios" as UC_CON_HOR
+    }
+    
+    package "Gestión de Tarjetas NFC" {
+        usecase "Asignar Tarjeta" as UC_ASIG_NFC
+        usecase "Cambiar Tarjeta" as UC_CAMB_NFC
+        usecase "Dar de Baja Tarjeta" as UC_BAJA_NFC
+    }
+    
+    package "Gestión de Incidencias" {
+        usecase "Solicitar Vacaciones" as UC_SOL_VAC
+        usecase "Aprobar Vacaciones" as UC_APR_VAC
+        usecase "Solicitar Permiso" as UC_SOL_PER
+        usecase "Autorizar Permiso" as UC_AUT_PER
+        usecase "Gestionar Días Festivos" as UC_FESTIVOS
+    }
+    
+    package "Reportes" {
+        usecase "Generar Reporte Diario" as UC_REP_DIA
+        usecase "Generar Reporte Semanal" as UC_REP_SEM
+        usecase "Generar Reporte Mensual" as UC_REP_MES
+        usecase "Exportar a PDF/Excel" as UC_EXPORT
+    }
+    
+    package "Administración del Sistema" {
+        usecase "Gestionar Usuarios" as UC_USERS
+        usecase "Consultar Bitácora" as UC_BITACORA
+    }
+}
+
+' Relaciones Empleado
+emp --> UC_LOGIN
+emp --> UC_LOGOUT
+emp --> UC_MIS_ASIST
+emp --> UC_SOL_VAC
+emp --> UC_SOL_PER
+
+' Relaciones NFC
+nfc --> UC_NFC
+
+' Relaciones Supervisor (heredadas + propias)
+sup --> UC_MANUAL
+sup --> UC_ASIST_GEN
+sup --> UC_CON_EMP
+sup --> UC_CON_HOR
+sup --> UC_REP_DIA
+sup --> UC_REP_SEM
+sup --> UC_REP_MES
+sup --> UC_EXPORT
+sup --> UC_APR_VAC
+sup --> UC_AUT_PER
+
+' Relaciones Administrador (heredadas + propias)
+admin --> UC_REG_EMP
+admin --> UC_MOD_EMP
+admin --> UC_DES_EMP
+admin --> UC_ASIG_HOR
+admin --> UC_MOD_HOR
+admin --> UC_ASIG_NFC
+admin --> UC_CAMB_NFC
+admin --> UC_BAJA_NFC
+admin --> UC_FESTIVOS
+admin --> UC_USERS
+admin --> UC_BITACORA
+admin --> UC_FALTAS
+
+@enduml

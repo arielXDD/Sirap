@@ -1,0 +1,44 @@
+@startuml Diagrama de Estados - Asistencia
+
+title Estados de un Registro de Asistencia
+
+[*] --> SinRegistro : Inicio del día
+
+state "Sin Registro" as SinRegistro {
+    [*] --> Esperando
+    Esperando : Empleado no ha\nregistrado asistencia
+}
+
+SinRegistro --> Puntual : Registra entrada\ndentro de tolerancia
+SinRegistro --> Retardo : Registra entrada\nfuera de tolerancia
+SinRegistro --> Justificada : Tiene permiso\no vacaciones
+SinRegistro --> Falta : Fin del día sin\nregistro (automático)
+
+state "Con Entrada Registrada" as ConEntrada {
+    Puntual : Llegó a tiempo\no dentro de tolerancia
+    Retardo : Llegó después\nde la tolerancia
+}
+
+state "Cerrado" as Cerrado {
+    Completa : Entrada + Salida\nregistradas
+    Justificada : Permiso o vacaciones\nautorizado
+    Falta : Sin asistencia\nni justificación
+}
+
+Puntual --> Completa : Registra salida
+Retardo --> Completa : Registra salida
+Justificada --> [*]
+Falta --> [*]
+Completa --> [*]
+
+note right of Retardo
+  minutosRetardo > toleranciaMinutos
+  del horario asignado
+end note
+
+note right of Falta
+  Generada automáticamente
+  por proceso nocturno
+end note
+
+@enduml

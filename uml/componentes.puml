@@ -1,0 +1,105 @@
+@startuml Diagrama de Componentes - Arquitectura SRAP
+
+skinparam componentStyle uml2
+
+package "Cliente" {
+    [Navegador Web] as Browser
+    component "Frontend\nNext.js" as Frontend {
+        [Páginas] as Pages
+        [Componentes] as Components
+        [Estado\nLocalStorage] as State
+    }
+}
+
+package "Hardware" {
+    [Arduino + MFRC522] as Arduino
+    [Tarjeta NFC] as NFCCard
+}
+
+package "Servidor" {
+    component "Backend\nNestJS" as Backend {
+        [AuthModule] as Auth
+        [EmpleadosModule] as Empleados
+        [AsistenciasModule] as Asistencias
+        [NfcModule] as NfcMod
+        [HorariosModule] as Horarios
+        [VacacionesModule] as Vacaciones
+        [PermisosModule] as Permisos
+        [DiasFestivosModule] as Festivos
+        [BitacoraModule] as Bitacora
+        [ReportesModule] as Reportes
+    }
+    
+    [API REST\n/api/*] as API
+    [JWT Auth\nMiddleware] as JWTMiddleware
+    [Servicio\nPuerto Serial] as SerialService
+}
+
+database "PostgreSQL" as DB {
+    [empleados]
+    [usuarios]
+    [asistencias]
+    [horarios]
+    [tarjetas_nfc]
+    [vacaciones]
+    [permisos]
+    [dias_festivos]
+    [bitacora]
+}
+
+' Conexiones Frontend
+Browser --> Frontend : HTTP/HTTPS
+Frontend --> API : REST + JWT
+
+' Conexiones API
+API --> JWTMiddleware : Validar Token
+JWTMiddleware --> Auth
+JWTMiddleware --> Empleados
+JWTMiddleware --> Asistencias
+JWTMiddleware --> Horarios
+JWTMiddleware --> Vacaciones
+JWTMiddleware --> Permisos
+JWTMiddleware --> Festivos
+JWTMiddleware --> Bitacora
+JWTMiddleware --> Reportes
+
+' Conexiones NFC
+NFCCard --> Arduino : RFID
+Arduino --> SerialService : USB Serial
+SerialService --> NfcMod
+NfcMod --> Asistencias : Registrar
+
+' Conexiones DB
+Auth --> DB
+Empleados --> DB
+Asistencias --> DB
+NfcMod --> DB
+Horarios --> DB
+Vacaciones --> DB
+Permisos --> DB
+Festivos --> DB
+Bitacora --> DB
+Reportes --> DB
+
+note right of Frontend
+  - React 19
+  - TypeScript
+  - CSS Modules
+  - Zustand (estado)
+end note
+
+note right of Backend
+  - TypeScript
+  - TypeORM
+  - class-validator
+  - bcrypt
+  - serialport
+end note
+
+note right of Arduino
+  - MFRC522 Library
+  - Serial 9600 baud
+  - LEDs confirmación
+end note
+
+@enduml

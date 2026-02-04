@@ -1,0 +1,82 @@
+@startuml Diagrama de Secuencia - Registro de Asistencia NFC
+
+title Flujo de Registro de Asistencia mediante NFC
+
+actor Empleado
+participant "Arduino\nMFRC522" as Arduino
+participant "NfcReaderService\n(Backend)" as NfcService
+participant "TarjetaNfcRepository" as TarjetaRepo
+participant "AsistenciasService" as AsistService
+participant "HorarioRepository" as HorarioRepo
+database "PostgreSQL" as DB
+
+== Lectura de Tarjeta NFC ==
+
+Empleado -> Arduino : Acercar tarjeta NFC
+activate Arduino
+
+Arduino -> Arduino : Leer UID de tarjeta
+Arduino -> NfcService : Enviar UID por serial
+deactivate Arduino
+
+activate NfcService
+
+== Validación de Tarjeta ==
+
+NfcService -> TarjetaRepo : Buscar tarjeta activa\n(codigoNfc, activa=true)
+activate TarjetaRepo
+TarjetaRepo -> DB : SELECT tarjeta\nWHERE codigoNfc = ? AND activa = true
+DB --> TarjetaRepo : Tarjeta + Empleado
+TarjetaRepo --> NfcService : tarjeta con empleado
+deactivate TarjetaRepo
+
+alt Tarjeta no encontrada o inactiva
+    NfcService -> Arduino : "ERROR"
+    Arduino -> Empleado : LED Rojo (Error)
+else Tarjeta válida
+    
+    == Registro de Asistencia ==
+    
+    NfcService -> AsistService : registrarAsistencia(empleadoId, 'normal')
+    activate AsistService
+    
+    AsistService -> DB : SELECT asistencia\nWHERE empleadoId = ? AND fecha = HOY
+    
+    alt No hay asistencia del día (ENTRADA)
+        
+        AsistService -> AsistService : Crear nueva asistencia\ncon horaEntrada = AHORA
+        
+        == Cálculo de Retardo ==
+        
+        AsistService -> HorarioRepo : Buscar horario del día
+        activate HorarioRepo
+        HorarioRepo -> DB : SELECT horario\nWHERE empleadoId = ? AND diaSemana = ?
+        DB --> HorarioRepo : horario
+        HorarioRepo --> AsistService : horario (horaEntrada, tolerancia)
+        deactivate HorarioRepo
+        
+        AsistService -> AsistService : Calcular minutosRetardo =\nhoraActual - horaEsperada
+        
+        alt minutosRetardo <= tolerancia
+            AsistService -> AsistService : estado = 'puntual'
+        else minutosRetardo > tolerancia
+            AsistService -> AsistService : estado = 'retardo'
+        end
+        
+        AsistService -> DB : INSERT asistencia
+        
+    else Ya tiene entrada (SALIDA)
+        AsistService -> DB : UPDATE asistencia\nSET horaSalida = AHORA
+    end
+    
+    DB --> AsistService : asistencia guardada
+    AsistService --> NfcService : asistencia
+    deactivate AsistService
+    
+    NfcService -> Arduino : "OK"
+    deactivate NfcService
+    Arduino -> Empleado : LED Verde (Éxito)
+    
+end
+
+@enduml

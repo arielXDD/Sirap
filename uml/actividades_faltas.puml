@@ -1,0 +1,69 @@
+@startuml Diagrama de Actividades - Generación Automática de Faltas
+
+title Proceso Diario de Generación Automática de Faltas
+
+start
+
+:Ejecutar proceso de generación de faltas;
+note right
+  Se ejecuta diariamente
+  a las 23:55
+  (CRON o Tarea Programada)
+end note
+
+:Obtener fecha objetivo;
+
+if (¿Es día festivo?) then (Sí)
+    :No generar faltas;
+    stop
+else (No)
+endif
+
+:Obtener lista de empleados activos;
+
+while (¿Hay más empleados?) is (Sí)
+    :Seleccionar siguiente empleado;
+    
+    if (¿Tiene asistencia registrada?) then (Sí)
+        :Continuar con siguiente;
+    else (No)
+        
+        if (¿Está de vacaciones aprobadas?) then (Sí)
+            :Continuar sin falta;
+        else (No)
+            
+            if (¿Tiene permiso autorizado?) then (Sí)
+                :Crear asistencia justificada;
+                :Estado = "justificada";
+                :Agregar observación con tipo de permiso;
+            else (No)
+                
+                if (¿Tiene horario asignado para hoy?) then (Sí)
+                    :Crear registro de falta;
+                    :Estado = "falta";
+                    :Tipo = "manual";
+                    :Observación = "Falta generada automáticamente";
+                    :Guardar en base de datos;
+                else (No)
+                    :No labora este día;
+                    :Continuar sin falta;
+                endif
+                
+            endif
+            
+        endif
+        
+    endif
+endwhile (No)
+
+:Registrar en bitácora;
+note right
+  Guardar Log:
+  - Fecha procesada
+  - Faltas generadas
+  - Justificaciones
+end note
+
+stop
+
+@enduml
