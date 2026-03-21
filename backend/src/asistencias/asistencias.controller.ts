@@ -4,6 +4,8 @@ import {
   Post,
   Body,
   Param,
+  Patch,
+  Delete,
   Query,
   UseGuards,
   ParseIntPipe,
@@ -13,6 +15,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AsistenciasService } from './asistencias.service';
 import { CreateAsistenciaDto } from './dto/create-asistencia.dto';
+import { UpdateAsistenciaDto } from './dto/update-asistencia.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
@@ -25,6 +28,18 @@ export class AsistenciasController {
   @Roles('administrador', 'supervisor')
   registrar(@Param('empleadoId', ParseIntPipe) empleadoId: number) {
     return this.asistenciasService.registrarAsistencia(empleadoId, 'manual');
+  }
+
+  @Get('stats/hoy')
+  @Roles('administrador', 'supervisor')
+  getStatsHoy() {
+    return this.asistenciasService.getStatsHoy();
+  }
+
+  @Get('stats/graficas')
+  @Roles('administrador', 'supervisor')
+  getStatsGraficas() {
+    return this.asistenciasService.getStatsGraficas();
   }
 
   @Post('manual')
@@ -47,10 +62,34 @@ export class AsistenciasController {
     );
   }
 
+  @Get('rango')
+  @Roles('administrador', 'supervisor')
+  findByRango(
+    @Query('fechaInicio') fechaInicio: string,
+    @Query('fechaFin') fechaFin: string,
+  ) {
+    return this.asistenciasService.findByRango(
+      new Date(fechaInicio),
+      new Date(fechaFin),
+    );
+  }
+
   @Get('fecha/:fecha')
   @Roles('administrador', 'supervisor')
   findByFecha(@Param('fecha') fecha: string) {
     return this.asistenciasService.findByFecha(new Date(fecha));
+  }
+
+  @Get('reporte/detallado')
+  @Roles('administrador', 'supervisor')
+  getReporteDetallado(
+    @Query('fechaInicio') fechaInicio: string,
+    @Query('fechaFin') fechaFin: string,
+  ) {
+    return this.asistenciasService.getReporteDetallado(
+      new Date(fechaInicio),
+      new Date(fechaFin),
+    );
   }
 
   @Get('export/excel')
@@ -94,5 +133,20 @@ export class AsistenciasController {
   generarFaltas(@Query('fecha') fecha?: string) {
     const fechaTarget = fecha ? new Date(fecha) : undefined;
     return this.asistenciasService.generarFaltasAutomaticas(fechaTarget);
+  }
+
+  @Patch(':id')
+  @Roles('administrador')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateAsistenciaDto: UpdateAsistenciaDto,
+  ) {
+    return this.asistenciasService.update(id, updateAsistenciaDto);
+  }
+
+  @Delete(':id')
+  @Roles('administrador')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.asistenciasService.remove(id);
   }
 }

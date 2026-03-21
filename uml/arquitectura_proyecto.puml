@@ -1,0 +1,60 @@
+@startuml ArquitecturaSRAP
+
+header Sistema SRAP - Arquitectura de Carpetas
+footer Página 1 de 1
+
+package "SRAP (Raíz del Proyecto)" as Root {
+
+    package "backend (Servidor NestJS)" as Backend {
+        package "src (Código Fuente)" as B_Src {
+            component "asistencias"
+            component "auth (Autenticación)"
+            component "backups (Respaldos)"
+            component "dias-festivos"
+            component "empleados"
+            component "horarios"
+            component "nfc / tarjetas-nfc"
+            component "usuarios"
+            component "vacaciones"
+            file "app.module.ts"
+            file "main.ts"
+        }
+    }
+
+    package "frontend (Cliente Next.js)" as Frontend {
+        package "app (Rutas y Páginas)" as F_App {
+            package "dashboard (Panel)" as Dash {
+                component "asistencias"
+                component "backups"
+                component "dias-festivos"
+                component "empleados"
+                component "horarios"
+                component "reportes"
+                component "tarjetas-nfc"
+                component "usuarios"
+                component "vacaciones"
+                file "layout.tsx"
+                file "page.tsx"
+            }
+            component "login (Acceso)"
+            component "components (Componentes)"
+            file "layout.tsx (Raíz)"
+            file "page.tsx (Inicio)"
+        }
+    }
+
+    package "uml (Diagramas)" as UML {
+        file "site_structure.puml"
+        file "arquitectura_proyecto.puml"
+    }
+
+    package "database (Base de Datos)" as DB {
+        component "Configuración y Scripts"
+    }
+
+}
+
+Backend -[hidden]down- Frontend
+Frontend -[hidden]down- UML
+
+@enduml

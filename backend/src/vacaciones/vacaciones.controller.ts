@@ -8,11 +8,13 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { VacacionesService } from './vacaciones.service';
 import { CreateVacacionDto } from './dto/create-vacacion.dto';
 import { UpdateVacacionDto } from './dto/update-vacacion.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
@@ -29,8 +31,8 @@ export class VacacionesController {
 
   @Get()
   @Roles('administrador', 'supervisor')
-  findAll() {
-    return this.vacacionesService.findAll();
+  findAll(@Query() pagination: PaginationDto) {
+    return this.vacacionesService.findAll(pagination);
   }
 
   @Get('pendientes')

@@ -7,14 +7,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empleado } from './empleado.entity';
+import { Usuario } from '../usuarios/usuario.entity';
 import { CreateEmpleadoDto } from './dto/create-empleado.dto';
 import { UpdateEmpleadoDto } from './dto/update-empleado.dto';
+import { PaginationDto, PaginatedResult } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class EmpleadosService {
   constructor(
     @InjectRepository(Empleado)
     private readonly empleadoRepository: Repository<Empleado>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepository: Repository<Usuario>,
   ) {}
 
   async create(createEmpleadoDto: CreateEmpleadoDto): Promise<Empleado> {
@@ -33,10 +37,21 @@ export class EmpleadosService {
     return await this.empleadoRepository.save(empleado);
   }
 
-  async findAll(): Promise<Empleado[]> {
-    return await this.empleadoRepository.find({
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResult<Empleado> | Empleado[]> {
+    if (!pagination) {
+      return await this.empleadoRepository.find({
+        relations: ['usuario', 'tarjetaNfc'],
+        order: { numeroEmpleado: 'ASC' },
+      });
+    }
+    const { page, limit } = pagination;
+    const [data, total] = await this.empleadoRepository.findAndCount({
+      relations: ['usuario', 'tarjetaNfc'],
       order: { numeroEmpleado: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number): Promise<Empleado> {
@@ -89,7 +104,18 @@ export class EmpleadosService {
     }
 
     Object.assign(empleado, updateEmpleadoDto);
-    return await this.empleadoRepository.save(empleado);
+    const savedEmpleado = await this.empleadoRepository.save(empleado);
+
+    // Sincronizar con el usuario si el estatus cambió
+    if (updateEmpleadoDto.estatus) {
+      const usuario = await this.usuarioRepository.findOne({ where: { empleadoId: id } });
+      if (usuario) {
+        usuario.activo = updateEmpleadoDto.estatus === 'activo';
+        await this.usuarioRepository.save(usuario);
+      }
+    }
+
+    return savedEmpleado;
   }
 
   async remove(id: number): Promise<void> {
@@ -100,7 +126,16 @@ export class EmpleadosService {
   async deactivate(id: number): Promise<Empleado> {
     const empleado = await this.findOne(id);
     empleado.estatus = 'inactivo';
-    return await this.empleadoRepository.save(empleado);
+    const savedEmpleado = await this.empleadoRepository.save(empleado);
+
+    // Sincronizar con el usuario
+    const usuario = await this.usuarioRepository.findOne({ where: { empleadoId: id } });
+    if (usuario) {
+      usuario.activo = false;
+      await this.usuarioRepository.save(usuario);
+    }
+
+    return savedEmpleado;
   }
 
   async findActivos(): Promise<Empleado[]> {

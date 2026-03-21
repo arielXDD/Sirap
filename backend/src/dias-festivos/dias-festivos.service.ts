@@ -1,0 +1,67 @@
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DiaFestivo } from './dia-festivo.entity';
+import { CreateDiaFestivoDto } from './dto/create-dia-festivo.dto';
+import { UpdateDiaFestivoDto } from './dto/update-dia-festivo.dto';
+import { PaginationDto, PaginatedResult } from '../common/dto/pagination.dto';
+
+@Injectable()
+export class DiasFestivosService {
+  constructor(
+    @InjectRepository(DiaFestivo)
+    private readonly diaFestivoRepository: Repository<DiaFestivo>,
+  ) {}
+
+  async create(createDiaFestivoDto: CreateDiaFestivoDto): Promise<DiaFestivo> {
+    try {
+      const diaFestivo = this.diaFestivoRepository.create(createDiaFestivoDto);
+      return await this.diaFestivoRepository.save(diaFestivo);
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Ya existe un día festivo registrado con esta fecha');
+      }
+      throw error;
+    }
+  }
+
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResult<DiaFestivo> | DiaFestivo[]> {
+    if (!pagination) {
+      return await this.diaFestivoRepository.find({ order: { fecha: 'ASC' } });
+    }
+    const { page, limit } = pagination;
+    const [data, total] = await this.diaFestivoRepository.findAndCount({
+      order: { fecha: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async findOne(id: number): Promise<DiaFestivo> {
+    const diaFestivo = await this.diaFestivoRepository.findOne({
+      where: { id },
+    });
+    if (!diaFestivo) {
+      throw new NotFoundException(`Día festivo con ID ${id} no encontrado`);
+    }
+    return diaFestivo;
+  }
+
+  async update(id: number, updateDiaFestivoDto: UpdateDiaFestivoDto): Promise<DiaFestivo> {
+    const diaFestivo = await this.findOne(id);
+    Object.assign(diaFestivo, updateDiaFestivoDto);
+    return await this.diaFestivoRepository.save(diaFestivo);
+  }
+
+  async remove(id: number): Promise<void> {
+    const diaFestivo = await this.findOne(id);
+    await this.diaFestivoRepository.remove(diaFestivo);
+  }
+
+  async findByDates(fechaInicio: Date, fechaFin: Date): Promise<DiaFestivo[]> {
+    return await this.diaFestivoRepository.createQueryBuilder('dia')
+      .where('dia.fecha BETWEEN :fechaInicio AND :fechaFin', { fechaInicio, fechaFin })
+      .getMany();
+  }
+}

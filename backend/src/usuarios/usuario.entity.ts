@@ -41,6 +41,28 @@ export class Usuario {
   @Column({ default: true })
   activo: boolean;
 
+  // ── Bloqueo de cuenta y Seguridad ──────────────────────────
+  @Column({ default: 0 })
+  intentosFallidos: number;
+
+  @Column({ default: false })
+  bloqueado: boolean;
+
+  @Column({ nullable: true, select: false })
+  codigoDesbloqueo: string;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  codigoDesbloqueoExpiracion: Date;
+  // ────────────────────────────────────────────────────────────
+
+  // ── Recuperación de contraseña ──────────────────────────────
+  @Column({ nullable: true, select: false })
+  resetToken: string;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  resetTokenExpiry: Date;
+  // ────────────────────────────────────────────────────────────
+
   @CreateDateColumn()
   creadoEn: Date;
 

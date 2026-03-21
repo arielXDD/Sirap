@@ -1,0 +1,36 @@
+SRAP (Raíz del proyecto)
+|-- backend/
+|   `-- src/ (Lógica del servidor - NestJS)
+|       |-- asistencias/
+|       |-- auth/
+|       |-- backups/
+|       |-- dias-festivos/
+|       |-- empleados/
+|       |-- horarios/
+|       |-- nfc/
+|       |-- tarjetas-nfc/
+|       |-- usuarios/
+|       |-- vacaciones/
+|       |-- app.module.ts
+|       `-- main.ts
+|-- frontend/
+|   `-- app/ (Interfaz de usuario - Next.js App Router)
+|       |-- dashboard/ (Panel de administración)
+|       |   |-- asistencias/
+|       |   |-- backups/
+|       |   |-- dias-festivos/
+|       |   |-- empleados/
+|       |   |-- horarios/
+|       |   |-- reportes/
+|       |   |-- tarjetas-nfc/
+|       |   |-- usuarios/
+|       |   |-- vacaciones/
+|       |   |-- layout.tsx (Estructura del panel)
+|       |   `-- page.tsx (Inicio del dashboard)
+|       |-- login/ (Página de acceso)
+|       |-- components/ (Componentes compartidos)
+|       |-- layout.tsx (Layout raíz)
+|       `-- page.tsx (Página principal)
+|-- uml/
+|   `-- site_structure.puml (Diagrama del DOOM)
+`-- database/ (Configuración de BD)

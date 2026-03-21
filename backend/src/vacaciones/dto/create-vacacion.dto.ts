@@ -1,6 +1,10 @@
-import { IsInt, IsDateString, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { IsInt, IsDateString, IsOptional, IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsAfterOrEqual } from '../../common/validators/date-range.validator';
 
 export class CreateVacacionDto {
+  @IsNotEmpty()
+  @IsEnum(['vacaciones', 'quinquenio', 'personal', 'permiso_especial', 'salud', 'otro'])
+  tipo: string;
   @IsNotEmpty()
   @IsInt()
   empleadoId: number;
@@ -11,6 +15,7 @@ export class CreateVacacionDto {
 
   @IsNotEmpty()
   @IsDateString()
+  @IsAfterOrEqual('fechaInicio', { message: 'fechaFin debe ser mayor o igual a fechaInicio' })
   fechaFin: string;
 
   @IsNotEmpty()

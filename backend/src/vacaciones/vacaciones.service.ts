@@ -5,6 +5,7 @@ import { Vacacion } from './vacacion.entity';
 import { CreateVacacionDto } from './dto/create-vacacion.dto';
 import { UpdateVacacionDto } from './dto/update-vacacion.dto';
 import { EmpleadosService } from '../empleados/empleados.service';
+import { PaginationDto, PaginatedResult } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class VacacionesService {
@@ -25,11 +26,21 @@ export class VacacionesService {
     return await this.vacacionRepository.save(vacacion);
   }
 
-  async findAll(): Promise<Vacacion[]> {
-    return await this.vacacionRepository.find({
+  async findAll(pagination?: PaginationDto): Promise<PaginatedResult<Vacacion> | Vacacion[]> {
+    if (!pagination) {
+      return await this.vacacionRepository.find({
+        relations: ['empleado'],
+        order: { creadoEn: 'DESC' },
+      });
+    }
+    const { page, limit } = pagination;
+    const [data, total] = await this.vacacionRepository.findAndCount({
       relations: ['empleado'],
       order: { creadoEn: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findByEmpleado(empleadoId: number): Promise<Vacacion[]> {

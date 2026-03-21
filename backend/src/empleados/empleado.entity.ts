@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { Horario } from '../horarios/horario.entity';
 import { Asistencia } from '../asistencias/asistencia.entity';
@@ -15,6 +16,8 @@ import { TarjetaNfc } from '../tarjetas-nfc/tarjeta-nfc.entity';
 import { Usuario } from '../usuarios/usuario.entity';
 
 @Entity('empleados')
+@Index('IDX_empleados_estatus', ['estatus'])
+@Index('IDX_empleados_nombre', ['nombre', 'apellidos'])
 export class Empleado {
   @PrimaryGeneratedColumn()
   id: number;
@@ -27,6 +30,15 @@ export class Empleado {
 
   @Column({ length: 100 })
   apellidos: string;
+
+  @Column({ length: 100, nullable: true })
+  email: string;
+
+  @Column({ length: 20, nullable: true })
+  telefono: string;
+
+  @Column({ nullable: true })
+  fotoUrl: string;
 
   @Column({ length: 100 })
   puesto: string;

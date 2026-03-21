@@ -14,6 +14,13 @@ export class Vacacion {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({
+    type: 'enum',
+    enum: ['vacaciones', 'quinquenio', 'personal', 'permiso_especial', 'salud', 'otro'],
+    default: 'vacaciones',
+  })
+  tipo: string;
+
   @ManyToOne(() => Empleado, (empleado) => empleado.vacaciones, {
     onDelete: 'CASCADE',
   })

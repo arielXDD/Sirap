@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TarjetaNfc } from '../tarjetas-nfc/tarjeta-nfc.entity';
 import { AsistenciasService } from '../asistencias/asistencias.service';
+import { NfcGateway } from './nfc.gateway';
 
 @Injectable()
 export class NfcReaderService implements OnModuleInit {
@@ -16,66 +17,29 @@ export class NfcReaderService implements OnModuleInit {
     @InjectRepository(TarjetaNfc)
     private readonly tarjetaRepository: Repository<TarjetaNfc>,
     private readonly asistenciasService: AsistenciasService,
+    private readonly nfcGateway: NfcGateway,
   ) {}
 
   async onModuleInit() {
-    // Inicializar la conexión serial al arrancar el módulo
-    await this.conectarArduino();
+    this.logger.log('📡 Modo WiFi activo. Lector NFC listo para recibir datos.');
   }
 
   /**
    * Conecta con el Arduino mediante puerto serial
    */
   async conectarArduino() {
-    try {
-      // Nota: Para que esto funcione, necesitas instalar 'serialport' con:
-      // npm install serialport
-      // Como no está instalado aún, dejamos el código preparado
-
-      const SerialPort = require('serialport');
-      const ReadlineParser = require('@serialport/parser-readline');
-
-      const serialPath = this.configService.get('SERIAL_PORT') || 'COM3';
-      const baudRate =
-        parseInt(this.configService.get<string>('SERIAL_BAUD_RATE') || '9600') || 9600;
-
-      this.port = new SerialPort.SerialPort({
-        path: serialPath,
-        baudRate: baudRate,
-      });
-
-      const parser = this.port.pipe(new ReadlineParser.ReadlineParser({ delimiter: '\n' }));
-
-      this.port.on('open', () => {
-        this.isConnected = true;
-        this.logger.log(`✅ Conectado al Arduino en ${serialPath}`);
-      });
-
-      this.port.on('error', (err: any) => {
-        this.logger.error(`❌ Error de conexión serial: ${err.message}`);
-        this.isConnected = false;
-      });
-
-      // Escuchar datos del Arduino
-      parser.on('data', async (data: string) => {
-        await this.procesarLecturaNfc(data.trim());
-      });
-    } catch (error) {
-      this.logger.warn(
-        '⚠️  No se pudo conectar al Arduino. Asegúrate de que esté conectado y que serialport esté instalado.',
-      );
-      this.logger.warn(
-        '   Ejecuta: npm install serialport @serialport/parser-readline',
-      );
-    }
+    // Desactivado en favor de WiFi para evitar errores de puerto ocupado
   }
 
   /**
-   * Procesa la lectura de una tarjeta NFC desde el Arduino
+   * Procesa la lectura de una tarjeta NFC
    */
-  async procesarLecturaNfc(codigoNfc: string) {
+  async procesarLecturaNfc(codigoNfc: string): Promise<{ success: boolean; message: string; empleado?: string; tipo?: string }> {
     try {
       this.logger.log(`📱 Tarjeta NFC detectada: ${codigoNfc}`);
+
+      // Notificar al frontend en tiempo real vía WebSocket
+      this.nfcGateway.emitirLectura(codigoNfc);
 
       // Buscar la tarjeta en la base de datos
       const tarjeta = await this.tarjetaRepository.findOne({
@@ -85,8 +49,7 @@ export class NfcReaderService implements OnModuleInit {
 
       if (!tarjeta) {
         this.logger.warn(`⚠️  Tarjeta ${codigoNfc} no encontrada o inactiva`);
-        this.enviarRespuestaArduino('ERROR');
-        return;
+        return { success: false, message: 'ERROR' };
       }
 
       // Registrar asistencia
@@ -95,18 +58,20 @@ export class NfcReaderService implements OnModuleInit {
         'normal',
       );
 
+      const nombreCompleto = `${tarjeta.empleado.nombre} ${tarjeta.empleado.apellidos}`;
+      const tipo = asistencia.horaSalida ? 'salida' : 'entrada';
+
       this.logger.log(
-        `✅ Asistencia registrada para ${tarjeta.empleado.nombre} ${tarjeta.empleado.apellidos}`,
+        `✅ Asistencia registrada para ${nombreCompleto}`,
       );
       this.logger.log(
         `   Estado: ${asistencia.estado} | Hora: ${asistencia.horaEntrada || asistencia.horaSalida}`,
       );
 
-      // Enviar confirmación al Arduino (puede encender un LED verde o buzzer)
-      this.enviarRespuestaArduino('OK');
+      return { success: true, message: 'OK', empleado: nombreCompleto, tipo };
     } catch (error) {
       this.logger.error(`❌ Error al procesar NFC: ${error.message}`);
-      this.enviarRespuestaArduino('ERROR');
+      return { success: false, message: error.message || 'ERROR' };
     }
   }
 

@@ -4,10 +4,10 @@
 -- ================================================
 
 -- Eliminar base de datos si existe (¡CUIDADO EN PRODUCCIÓN!)
--- DROP DATABASE IF EXISTS srap_db;
+-- DROP DATABASE IF EXISTS sirap;
 
 -- Crear base de datos
-CREATE DATABASE srap_db
+CREATE DATABASE sirap
     WITH
     OWNER = postgres
     ENCODING = 'UTF8'
@@ -16,10 +16,10 @@ CREATE DATABASE srap_db
     TABLESPACE = pg_default
     CONNECTION LIMIT = -1;
 
-COMMENT ON DATABASE srap_db IS 'Sistema de Registro de Asistencia de Personal';
+COMMENT ON DATABASE sirap IS 'Sistema de Registro de Asistencia de Personal';
 
 -- Conectar a la base de datos
-\c srap_db
+\c sirap
 
 -- ================================================
 -- Las tablas se crearán automáticamente por TypeORM
@@ -38,12 +38,11 @@ INSERT INTO empleados (numero_empleado, nombre, apellidos, puesto, area, fecha_i
 VALUES ('ADMIN001', 'Administrador', 'del Sistema', 'Administrador TI', 'Tecnología', '2026-01-28', 'activo', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
--- Crear usuario admin (contraseña: admin123)
--- El hash fue generado con bcrypt, rounds=10
+-- Crear usuario admin (contraseña: admin124, hash bcrypt rounds=10)
 INSERT INTO usuarios (username, "passwordHash", rol, "empleadoId", activo, "creadoEn", "actualizadoEn")
-SELECT 
+SELECT
     'admin',
-    '$2b$10$K5z8qZY.xB0YvJ4BQvH7/ujK8F.2hI7MzREp/pVYQfLg3xP7s4Yju',
+    '$2b$10$hGgZyolyCgB65V6lq7CJmO71w6xrM76NXm.W4pgv/A1vJ1SNr9sfi',
     'administrador',
     (SELECT id FROM empleados WHERE numero_empleado = 'ADMIN001'),
     true,

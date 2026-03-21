@@ -2,9 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, IsNull } from 'typeorm';
 import { Asistencia } from './asistencia.entity';
 import { Empleado } from '../empleados/empleado.entity';
 import { Horario } from '../horarios/horario.entity';
@@ -12,6 +14,7 @@ import { Vacacion } from '../vacaciones/vacacion.entity';
 import { Permiso } from '../permisos/permiso.entity';
 import { DiaFestivo } from '../dias-festivos/dia-festivo.entity';
 import { CreateAsistenciaDto } from './dto/create-asistencia.dto';
+import { UpdateAsistenciaDto } from './dto/update-asistencia.dto';
 import * as ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 
@@ -51,12 +54,14 @@ export class AsistenciasService {
     const fechaStr = fechaActual.toISOString().split('T')[0];
     const horaActual = fechaActual.toTimeString().split(' ')[0];
 
-    // Buscar asistencia del día
+    // Buscar si hay una asistencia "abierta" (sin hora de salida) para hoy
     let asistencia = await this.asistenciaRepository.findOne({
       where: {
         empleadoId,
         fecha: new Date(fechaStr) as any,
+        horaSalida: IsNull()
       },
+      order: { id: 'DESC' }
     });
 
     if (!asistencia) {
@@ -73,13 +78,7 @@ export class AsistenciasService {
 
       return await this.asistenciaRepository.save(asistencia);
     } else {
-      // Registrar salida
-      if (asistencia.horaSalida) {
-        throw new BadRequestException(
-          'Ya se registró la salida para el día de hoy',
-        );
-      }
-
+      // Registrar salida en la asistencia abierta
       asistencia.horaSalida = horaActual;
       return await this.asistenciaRepository.save(asistencia);
     }
@@ -95,8 +94,8 @@ export class AsistenciasService {
     const fechaAsistencia = new Date(asistencia.fecha);
     const diaSemana = this.obtenerDiaSemana(fechaAsistencia);
 
-    // Buscar horario del empleado para ese día
-    const horario = await this.horarioRepository.findOne({
+    // Buscar todos los horarios del empleado para ese día
+    const horarios = await this.horarioRepository.find({
       where: {
         empleadoId: empleado.id,
         diaSemana,
@@ -104,10 +103,28 @@ export class AsistenciasService {
       },
     });
 
-    if (!horario) {
+    if (horarios.length === 0) {
       asistencia.estado = 'puntual';
       return;
     }
+
+    // Encontrar el horario más cercano a la hora de entrada actual
+    const [hActual, mActual] = asistencia.horaEntrada.split(':').map(Number);
+    const minutosActual = hActual * 60 + mActual;
+
+    let horario = horarios[0];
+    let diferenciaMinima = Infinity;
+
+    horarios.forEach(h => {
+      const [hEsp, mEsp] = h.horaEntrada.split(':').map(Number);
+      const minutosEsp = hEsp * 60 + mEsp;
+      const diff = Math.abs(minutosActual - minutosEsp);
+      
+      if (diff < diferenciaMinima) {
+        diferenciaMinima = diff;
+        horario = h;
+      }
+    });
 
     // Comparar hora de entrada
     const horaEntrada = asistencia.horaEntrada;
@@ -148,6 +165,18 @@ export class AsistenciasService {
   }
 
   /**
+   * Calcula las horas trabajadas entre entrada y salida
+   */
+  private calcularHorasTrabajadas(entrada: string, salida: string): number {
+    if (!entrada || !salida) return 0;
+    const [hEntrada, mEntrada] = entrada.split(':').map(Number);
+    const [hSalida, mSalida] = salida.split(':').map(Number);
+    const totalEntrada = hEntrada + mEntrada / 60;
+    const totalSalida = hSalida + mSalida / 60;
+    return Math.max(0, totalSalida - totalEntrada);
+  }
+
+  /**
    * Obtiene el día de la semana en español
    */
   private obtenerDiaSemana(fecha: Date): string {
@@ -167,6 +196,7 @@ export class AsistenciasService {
    * Genera faltas automáticas para empleados que no registraron asistencia
    * Este método debe ejecutarse diariamente (puede ser mediante un cron job)
    */
+  @Cron(CronExpression.EVERY_DAY_AT_11PM)
   async generarFaltasAutomaticas(fecha?: Date): Promise<void> {
     const fechaTarget = fecha || new Date();
     const fechaStr = fechaTarget.toISOString().split('T')[0];
@@ -295,6 +325,17 @@ export class AsistenciasService {
   }
 
   /**
+   * Obtiene todas las asistencias de un rango de fechas (más eficiente que N llamadas por día)
+   */
+  async findByRango(fechaInicio: Date, fechaFin: Date): Promise<Asistencia[]> {
+    return await this.asistenciaRepository.find({
+      where: { fecha: Between(fechaInicio, fechaFin) as any },
+      relations: ['empleado'],
+      order: { fecha: 'DESC', horaEntrada: 'ASC' },
+    });
+  }
+
+  /**
    * Registro manual de asistencia por un administrador
    */
   async createManual(createAsistenciaDto: CreateAsistenciaDto): Promise<Asistencia> {
@@ -308,11 +349,13 @@ export class AsistenciasService {
       );
     }
 
-    const asistencia = this.asistenciaRepository.create({
+    const asistencia = (this.asistenciaRepository.create({
       ...createAsistenciaDto,
       fecha: new Date(createAsistenciaDto.fecha) as any,
       tipoRegistro: 'manual',
-    });
+      horaEntrada: createAsistenciaDto.horaEntrada || null,
+      horaSalida: createAsistenciaDto.horaSalida || null,
+    } as any) as unknown) as Asistencia;
 
     // Si tiene hora de entrada, calcular estado
     if (asistencia.horaEntrada) {
@@ -320,6 +363,49 @@ export class AsistenciasService {
     }
 
     return await this.asistenciaRepository.save(asistencia);
+  }
+
+  async update(id: number, updateAsistenciaDto: UpdateAsistenciaDto): Promise<Asistencia> {
+    const asistencia = await this.asistenciaRepository.findOne({
+      where: { id },
+      relations: ['empleado'],
+    });
+
+    if (!asistencia) {
+      throw new NotFoundException(`Asistencia con ID ${id} no encontrada`);
+    }
+
+    // Sanitizar campos de tiempo: cadenas vacías -> null
+    const horaEntrada = updateAsistenciaDto.horaEntrada?.trim() || null;
+    const horaSalida = updateAsistenciaDto.horaSalida?.trim() || null;
+
+    // Costruir el objeto de actualización limpio
+    const updateData: Partial<Asistencia> = {
+      tipoRegistro: 'manual',
+      estado: (updateAsistenciaDto.estado as any) ?? asistencia.estado,
+      observaciones: updateAsistenciaDto.observaciones ?? asistencia.observaciones,
+      horaEntrada: horaEntrada as any,
+      horaSalida: horaSalida as any,
+    };
+
+    if (updateAsistenciaDto.minutosRetardo !== undefined) {
+      updateData.minutosRetardo = updateAsistenciaDto.minutosRetardo;
+    }
+
+    await this.asistenciaRepository.update(id, updateData);
+
+    // Devolver el registro actualizado
+    return await this.asistenciaRepository.findOne({
+      where: { id },
+      relations: ['empleado'],
+    }) as Asistencia;
+  }
+
+  async remove(id: number): Promise<void> {
+    const result = await this.asistenciaRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Asistencia con ID ${id} no encontrada`);
+    }
   }
   async generateExcelReport(fechaInicio?: Date, fechaFin?: Date, empleadoId?: number) {
     const workbook = new ExcelJS.Workbook();
@@ -436,5 +522,118 @@ export class AsistenciasService {
     }
 
     return await query.getMany();
+  }
+
+  async getStatsHoy() {
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().split('T')[0];
+    const fechaInicio = new Date(hoyStr);
+    const fechaFin = new Date(hoyStr);
+    fechaFin.setHours(23, 59, 59, 999);
+
+    // Ejecutar ambas consultas en paralelo
+    const [asistencias, empleadosActivos] = await Promise.all([
+      this.asistenciaRepository.find({
+        where: { fecha: Between(fechaInicio, fechaFin) as any },
+        select: ['id', 'estado'],  // Solo columnas necesarias
+      }),
+      this.empleadoRepository.count({ where: { estatus: 'activo' } }),
+    ]);
+
+    return {
+      asistenciasHoy: asistencias.filter(a => a.estado === 'puntual' || a.estado === 'retardo').length,
+      retardosHoy: asistencias.filter(a => a.estado === 'retardo').length,
+      faltasHoy: asistencias.filter(a => a.estado === 'falta').length,
+      empleadosActivos,
+    };
+  }
+
+  async getStatsGraficas() {
+    const hoy = new Date();
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hoy.getDate() - 6);
+    hace7Dias.setHours(0, 0, 0, 0);
+
+    const asistencias = await this.asistenciaRepository.find({
+      where: {
+        fecha: Between(hace7Dias, hoy) as any,
+      },
+    });
+
+    // 1. Gráfica Semanal
+    const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    const attendanceData: any[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(hace7Dias);
+      d.setDate(hace7Dias.getDate() + i);
+      const dStr = d.toISOString().split('T')[0];
+      
+      const asistenciasDia = asistencias.filter(a => 
+        new Date(a.fecha).toISOString().split('T')[0] === dStr
+      );
+
+      attendanceData.push({
+        name: diasSemana[d.getDay()],
+        asistencia: asistenciasDia.filter(a => a.estado === 'puntual' || a.estado === 'retardo').length,
+        faltas: asistenciasDia.filter(a => a.estado === 'falta').length,
+      });
+    }
+
+    // 2. Gráfica de Puntualidad (histórico de los 7 días)
+    const total = asistencias.length || 1;
+    const puntualidadData = [
+      { name: 'Puntual', value: Math.round((asistencias.filter(a => a.estado === 'puntual').length / total) * 100), color: '#10b981' },
+      { name: 'Retardo', value: Math.round((asistencias.filter(a => a.estado === 'retardo').length / total) * 100), color: '#f59e0b' },
+      { name: 'Falta', value: Math.round((asistencias.filter(a => a.estado === 'falta').length / total) * 100), color: '#ef4444' },
+    ];
+
+    return {
+      attendanceData,
+      puntualidadData,
+    };
+  }
+
+  /**
+   * Obtiene un reporte detallado con asistencias, permisos y vacaciones
+   */
+  async getReporteDetallado(fechaInicio: Date, fechaFin: Date) {
+    // 4 consultas en paralelo en vez de secuenciales → 4x más rápido
+    const [empleados, asistencias, vacaciones, permisos] = await Promise.all([
+      this.empleadoRepository.find({ where: { estatus: 'activo' } }),
+      this.asistenciaRepository.find({
+        where: { fecha: Between(fechaInicio, fechaFin) as any },
+        relations: ['empleado'],
+      }),
+      this.vacacionRepository.find({ where: { estado: 'aprobada' }, relations: ['empleado'] }),
+      this.permisoRepository.find({ where: { autorizado: true }, relations: ['empleado'] }),
+    ]);
+
+    const data = empleados.map(emp => {
+      const empAsist = asistencias.filter(a => a.empleadoId === emp.id);
+      const empVac = vacaciones.filter(v => v.empleadoId === emp.id);
+      const empPerm = permisos.filter(p => p.empleadoId === emp.id);
+
+      let horasTotales = 0;
+      empAsist.forEach(a => {
+        horasTotales += this.calcularHorasTrabajadas(a.horaEntrada, a.horaSalida);
+      });
+
+      return {
+        ...emp,
+        asistencias: empAsist,
+        stats: {
+          puntuales: empAsist.filter(a => a.estado === 'puntual').length,
+          retardos: empAsist.filter(a => a.estado === 'retardo').length,
+          faltas: empAsist.filter(a => a.estado === 'falta').length,
+          justificadas: empAsist.filter(a => a.estado === 'justificada').length,
+          horasTrabajadas: +horasTotales.toFixed(2),
+          vacaciones: empVac.length,
+          permisos: empPerm.length,
+        }
+      };
+    });
+
+    return data;
   }
 }

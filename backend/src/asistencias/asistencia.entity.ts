@@ -6,10 +6,14 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Empleado } from '../empleados/empleado.entity';
 
 @Entity('asistencias')
+// Índices compuestos para las consultas más frecuentes
+@Index('IDX_asistencias_fecha', ['fecha'])
+@Index('IDX_asistencias_empleado_fecha', ['empleadoId', 'fecha'])
 export class Asistencia {
   @PrimaryGeneratedColumn()
   id: number;

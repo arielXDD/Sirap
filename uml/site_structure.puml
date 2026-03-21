@@ -1,0 +1,45 @@
+@startuml EstructuraSitio
+
+package "Root (app/layout.tsx)" {
+    component "Notificaciones (Toaster)" as Toaster
+    
+    package "Rutas Públicas" {
+        component "Inicio (/)" as Home
+        component "Acceso (/login)" as Login
+    }
+
+    package "Rutas Privadas (Autenticadas)" {
+        component "Layout del Panel" as DashLayout
+        
+        package "Contenido del Panel" {
+            package "Inicio (Dashboard)" {
+                component "Cuadrícula de Estadísticas" as Stats
+                component "Sección de Gráficas" as Charts
+            }
+            
+            package "Página de Horarios" {
+                component "Buscador de Empleados" as EmpSide
+                component "Panel de Horarios" as SchedPanel
+                SchedPanel *-- "Resumen Semanal"
+                SchedPanel *-- "Tabla de Días y Turnos"
+            }
+
+            component "Empleados"
+            component "Asistencias"
+            component "Vacaciones"
+            component "Reportes"
+            component "Días Festivos"
+            component "Tarjetas NFC"
+            component "Usuarios"
+            component "Respaldos"
+        }
+        
+        component "Barra Lateral (Nav)" as Sidebar
+        component "Cabecera (Usuario)" as Header
+        
+        DashLayout *-- Sidebar
+        DashLayout *-- Header
+        DashLayout *-- "Contenido del Panel"
+    }
+}
+@enduml
