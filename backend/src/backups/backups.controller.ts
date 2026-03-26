@@ -1,23 +1,16 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Param,
-  Res,
-  UseGuards,
-  Request,
-  Body,
-  ParseIntPipe,
-  StreamableFile,
+  Controller, Get, Post, Delete, Param, Res, UseGuards,
+  Request, Body, ParseIntPipe, StreamableFile, UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { BackupsService } from './backups.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { Response } from 'express';
 import { createReadStream } from 'fs';
-import { join } from 'path';
+import { memoryStorage } from 'multer';
 
 @Controller('backups')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -41,14 +34,22 @@ export class BackupsController {
   async download(@Param('id', ParseIntPipe) id: number, @Res({ passthrough: true }) res: Response) {
     const filePath = await this.backupsService.getDownloadPath(id);
     const fileName = filePath.split('\\').pop();
-    
     res.set({
       'Content-Type': 'application/sql',
       'Content-Disposition': `attachment; filename="${fileName}"`,
     });
-
     const file = createReadStream(filePath);
     return new StreamableFile(file);
+  }
+
+  @Post('restaurar')
+  @Roles('administrador')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async restore(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new Error('No se recibió ningún archivo');
+    }
+    return this.backupsService.restoreFromUpload(file.buffer, file.originalname);
   }
 
   @Delete(':id')

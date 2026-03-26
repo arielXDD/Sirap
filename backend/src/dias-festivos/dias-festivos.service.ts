@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DiaFestivo } from './dia-festivo.entity';
@@ -8,15 +8,53 @@ import { PaginationDto, PaginatedResult } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class DiasFestivosService {
+  private readonly logger = new Logger(DiasFestivosService.name);
+
   constructor(
     @InjectRepository(DiaFestivo)
     private readonly diaFestivoRepository: Repository<DiaFestivo>,
   ) {}
 
-  async create(createDiaFestivoDto: CreateDiaFestivoDto): Promise<DiaFestivo> {
+  async create(createDiaFestivoDto: CreateDiaFestivoDto): Promise<DiaFestivo & { asistenciasCorregidas: number }> {
     try {
       const diaFestivo = this.diaFestivoRepository.create(createDiaFestivoDto);
-      return await this.diaFestivoRepository.save(diaFestivo);
+      const saved = await this.diaFestivoRepository.save(diaFestivo);
+
+      // ── Lógica retroactiva ──────────────────────────────────────────────────
+      // Si el día festivo ya pasó o es hoy, corregir asistencias con estado 'falta'
+      const fechaFestivo = new Date(createDiaFestivoDto.fecha);
+      const hoy = new Date();
+      hoy.setHours(23, 59, 59, 999);
+
+      let asistenciasCorregidas = 0;
+
+      if (fechaFestivo <= hoy) {
+        const fechaStr = createDiaFestivoDto.fecha; // 'YYYY-MM-DD'
+
+        const result = await this.diaFestivoRepository.manager.query(
+          `UPDATE asistencias
+           SET estado = 'justificada',
+               observaciones = CASE
+                 WHEN observaciones IS NULL OR observaciones = ''
+                   THEN 'Día festivo registrado retroactivamente'
+                 ELSE observaciones || ' | Día festivo registrado retroactivamente'
+               END,
+               "actualizadoEn" = NOW()
+           WHERE fecha::date = $1::date
+             AND estado = 'falta'`,
+          [fechaStr],
+        );
+
+        asistenciasCorregidas = result[1] ?? 0;
+
+        if (asistenciasCorregidas > 0) {
+          this.logger.log(
+            `[DíasFestivos] Retroactivo: ${asistenciasCorregidas} faltas convertidas a "justificada" para el día ${fechaStr}`,
+          );
+        }
+      }
+
+      return { ...saved, asistenciasCorregidas };
     } catch (error) {
       if (error.code === '23505') {
         throw new ConflictException('Ya existe un día festivo registrado con esta fecha');
@@ -39,12 +77,8 @@ export class DiasFestivosService {
   }
 
   async findOne(id: number): Promise<DiaFestivo> {
-    const diaFestivo = await this.diaFestivoRepository.findOne({
-      where: { id },
-    });
-    if (!diaFestivo) {
-      throw new NotFoundException(`Día festivo con ID ${id} no encontrado`);
-    }
+    const diaFestivo = await this.diaFestivoRepository.findOne({ where: { id } });
+    if (!diaFestivo) throw new NotFoundException(`Día festivo con ID ${id} no encontrado`);
     return diaFestivo;
   }
 

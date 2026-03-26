@@ -1,0 +1,105 @@
+@startuml
+title 1. Configuración de Acceso (Clases)
+
+package "Seguridad" {
+  class Usuario {
+    + id: int
+    + username: string
+    + passwordHash: string
+    + rol: Enum {ADMIN, SUPERVISOR, EMPLEADO}
+    + activo: boolean
+    + intentosFallidos: int
+    + bloqueado: boolean
+    + resetToken: string
+    + codigoDesbloqueo: string
+  }
+}
+
+package "Administración" {
+  class Empleado {
+    + id: int
+    + numeroEmpleado: string
+    + email: string
+    + telefono: string
+    + puesto: string
+    + area: string
+    + fechaIngreso: Date
+  }
+
+  class TarjetaNFC {
+    + id: int
+    + codigoNfc: string
+    + empleadoId: int
+  }
+}
+
+Usuario "1" -- "1" Empleado : asignado_a
+Empleado "1" -- "0..1" TarjetaNFC : posee
+@enduml
+
+@startuml
+title 2. Flujo de Navegación (Estados)
+
+state "Inicio de Sesión" as Login {
+  [*] --> Credenciales
+  Credenciales --> ValidarToken : subida
+  ValidarToken --> LoginSuccess : OK
+  ValidarToken --> Credenciales : Error (Contador++)
+  LoginSuccess --> Dashboard : Redirigir
+}
+
+state Dashboard {
+  [*] --> DeterminarVistas
+  DeterminarVistas --> VistaAdmin : rol == 'administrador'
+  DeterminarVistas --> VistaSupervisor : rol == 'supervisor'
+  DeterminarVistas --> VistaEmpleado : rol == 'empleado'
+  
+  state VistaAdmin {
+    [*] --> UsuariosSys
+    UsuariosSys --> EmpleadosSys
+    EmpleadosSys --> NFC_Config
+    NFC_Config --> Backend_Admin
+  }
+
+  state VistaSupervisor {
+    [*] --> Area_Staff
+    Area_Staff --> Area_Reports
+    Area_Reports --> Horarios_Edit
+  }
+
+  state VistaEmpleado {
+    [*] --> MyAttendance
+    MyAttendance --> MyVacations
+    MyVacations --> MySchedule
+  }
+}
+@enduml
+
+@startuml
+title 3. Privilegios por Rol (Casos de Uso)
+
+left to right direction
+actor "Empleado" as E
+actor "Supervisor" as S
+actor "Administrador" as A
+
+A --|> S
+S --|> E
+
+rectangle "Sistema de Control de Acceso" {
+  usecase "Registro de Asistencia" as UC1
+  usecase "Visualizar Perfil Propio" as UC2
+  usecase "Gestionar Personal de Área" as UC4
+  usecase "Exportar Reportes" as UC5
+  usecase "Gestión Total de Usuarios" as UC7
+  usecase "Mantenimiento BD y NFC" as UC8
+}
+
+E --> UC1
+E --> UC2
+S --> UC4
+S --> UC5
+A --> UC7
+A --> UC8
+@enduml
+

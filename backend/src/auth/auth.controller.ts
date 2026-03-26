@@ -15,9 +15,14 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 3, ttl: 60000 } }) // max 3 solicitudes/min
-  async forgotPassword(@Body() body: { username: string }) {
-    return this.authService.requestPasswordReset(body.username);
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post('forgot-password-sms')
+  @HttpCode(HttpStatus.OK)
+  async forgotPasswordSms(@Body() body: { email: string }) {
+    return this.authService.requestPasswordResetSms(body.email);
   }
 
   @Post('reset-password')
@@ -26,15 +31,13 @@ export class AuthController {
     return this.authService.resetPassword(body.token, body.password);
   }
 
-  // ── NUEVO: Desbloqueo ─────────────────────────────────────
+  // ── Desbloqueo ─────────────────────────────────────────────
   @Post('unlock-admin')
   @HttpCode(HttpStatus.OK)
   async unlockAdmin(@Body() body: { username: string; code: string }) {
     return this.authService.verifyUnlockCode(body.username, body.code);
   }
 
-  // Desbloqueo manual por Admin (usando el ID del usuario a desbloquear)
-  // El guard de seguridad se maneja dentro del servicio o con @Roles
   @Post('unlock-user/:id')
   @HttpCode(HttpStatus.OK)
   async unlockUser(@Param('id') id: string, @Body('adminId') adminId: number) {
