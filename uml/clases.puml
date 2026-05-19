@@ -1,0 +1,118 @@
+@startuml clases
+
+title Diagrama de Clases - SRAP
+
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+class Empleado {
+    - id : int
+    - numeroEmpleado : string
+    - nombre : string
+    - apellidos : string
+    - puesto : string
+    - area : string
+    - fechaIngreso : Date
+    - estatus : string
+    - creadoEn : DateTime
+    - actualizadoEn : DateTime
+}
+
+class Usuario {
+    - id : int
+    - username : string
+    - passwordHash : string
+    - rol : string
+    - empleadoId : int
+    - activo : boolean
+    - creadoEn : DateTime
+    - actualizadoEn : DateTime
+}
+
+class Horario {
+    - id : int
+    - empleadoId : int
+    - diaSemana : string
+    - horaEntrada : Time
+    - horaSalida : Time
+    - toleranciaMinutos : int
+    - fechaInicio : Date
+    - fechaFin : Date
+    - activo : boolean
+}
+
+class Asistencia {
+    - id : int
+    - empleadoId : int
+    - fecha : Date
+    - horaEntrada : Time
+    - horaSalida : Time
+    - tipoRegistro : string
+    - estado : string
+    - minutosRetardo : int
+    - observaciones : string
+}
+
+class TarjetaNfc {
+    - id : int
+    - codigoNfc : string
+    - empleadoId : int
+    - fechaAsignacion : Date
+    - activa : boolean
+    - motivoBaja : string
+}
+
+class Vacacion {
+    - id : int
+    - empleadoId : int
+    - fechaInicio : Date
+    - fechaFin : Date
+    - diasSolicitados : int
+    - estado : string
+    - observaciones : string
+}
+
+class Permiso {
+    - id : int
+    - empleadoId : int
+    - fechaInicio : Date
+    - fechaFin : Date
+    - tipo : string
+    - motivo : string
+    - autorizado : boolean
+    - autorizadoPor : int
+}
+
+class DiaFestivo {
+    - id : int
+    - fecha : Date
+    - descripcion : string
+    - tipo : string
+}
+
+class Bitacora {
+    - id : int
+    - usuarioId : int
+    - accion : string
+    - tablaAfectada : string
+    - registroId : int
+    - datosAnteriores : JSON
+    - datosNuevos : JSON
+    - motivo : string
+    - ipAddress : string
+    - fechaHora : DateTime
+}
+
+Empleado "1" -- "0..*" Horario
+Empleado "1" -- "0..*" Asistencia
+Empleado "1" -- "0..1" TarjetaNfc
+Empleado "1" -- "0..*" Vacacion
+Empleado "1" -- "0..*" Permiso
+Empleado "1" -- "0..1" Usuario
+Usuario "1" -- "0..*" Bitacora
+
+@enduml

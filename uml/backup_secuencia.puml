@@ -1,0 +1,55 @@
+@startuml backup_secuencia
+title Secuencia: Proceso de Generación de Copia de Seguridad
+
+skinparam monochrome true
+skinparam backgroundcolor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+actor "Administrador (Sistema)" as Admin
+participant "API Backend (NestJS)" as API
+participant "Servicio pg_dump (PostgreSQL)" as Utility
+database "Base de Datos (PostgreSQL)" as DB
+participant "Sistema de Archivos (backups/)" as Storage
+entity "Tabla: backups" as DB_Table
+
+autonumber
+
+== Fase 1: Solicitud y Validación ==
+
+Admin -> API : POST /api/backups\n(Enviar Comentario + Token JWT)
+activate API
+
+API -> API : Validar Token y Permisos\n(Rol: administrador)
+note over API : Se verifica que el usuario\ntenga privilegios de TI
+
+== Fase 2: Ejecución del Respaldo ==
+
+API -> Utility : Invocar proceso pg_dump.exe\n(Credenciales desde .env)
+activate Utility
+
+Utility -> DB : Solicitar Esquema y Datos\n(Exportación Completa)
+activate DB
+DB --> Utility : Transmisión de Datos SQL
+deactivate DB
+
+Utility -> Storage : Guardar archivo .sql\n(backup_YYYY-MM-DD.sql)
+deactivate Utility
+
+API -> Storage : Validar integridad del archivo\n(¿Existe? y ¿Tamaño > 0?)
+activate Storage
+Storage --> API : Confirmación de archivo válido
+deactivate Storage
+
+== Fase 3: Registro y Respuesta ==
+
+API -> DB_Table : Registrar metadatos del backup\n(Nombre, Ruta, Tamaño, Usuario)
+activate DB_Table
+DB_Table --> API : Registro Confirmado (ID generado)
+deactivate DB_Table
+
+API --> Admin : Respuesta Exitosa (JSON)\n{ msg: "Respaldo Creado", id: XX }
+deactivate API
+
+@enduml

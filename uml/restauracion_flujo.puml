@@ -1,0 +1,53 @@
+@startuml restauracion_flujo
+title Protocolo de Restauración de Base de Datos (SIRAP)
+
+skinparam monochrome true
+skinparam backgroundcolor white
+skinparam shadowing false
+
+start
+:Administrador: Detectar problema en base de datos;
+
+if (¿Se tiene backup válido?) then (No)
+    :Administrador: Solicitar backup reciente al equipo TI;
+    stop
+else (Sí)
+    :Administrador: Notificar usuarios (Sistema en mantenimiento);
+endif
+
+:Administrador: Autenticarse en SIRAP;
+
+:API Backend: Recibir archivo .sql (POST);
+note right: FileInterceptor con memoryStorage()
+
+:API Backend: Guardar archivo temporal;
+
+:API Backend: Ejecutar psql.exe (Restauración);
+
+if (¿Ejecución exitosa?) then (Error)
+    :API Backend: Registrar error en consola;
+    :Administrador: Revisar logs del backend;
+    stop
+else (OK)
+endif
+
+:API Backend: Sincronizar secuencias de auto-incremento (DO $$);
+note right
+  setval(seq_name, MAX(id))
+  para TODAS las tablas con PK
+end note
+
+:API Backend: Eliminar archivo temporal;
+
+:Administrador: Ejecutar verificaciones (SELECT COUNT);
+
+if (¿Datos íntegros?) then (Fallo)
+    :Administrador: Analizar backup alternativo;
+    stop
+else (OK)
+endif
+
+:Administrador: Notificar usuarios (Sistema disponible);
+stop
+
+@enduml

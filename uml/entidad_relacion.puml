@@ -1,0 +1,139 @@
+@startuml Diagrama ER - Base de Datos SRAP
+
+!define primary_key(x) <b><color:#b8861b><&key></color> x</b>
+!define foreign_key(x) <color:#aaaaaa><&key></color> x
+!define unique(x) <color:#green><&check></color> x
+!define not_null(x) <u>x</u>
+
+skinparam linetype ortho
+
+entity "empleados" as empleados {
+    primary_key(id) : SERIAL
+    --
+    unique(numero_empleado) : VARCHAR(50)
+    not_null(nombre) : VARCHAR(100)
+    not_null(apellidos) : VARCHAR(100)
+    not_null(puesto) : VARCHAR(100)
+    not_null(area) : VARCHAR(100)
+    not_null(fecha_ingreso) : DATE
+    not_null(estatus) : ENUM
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "usuarios" as usuarios {
+    primary_key(id) : SERIAL
+    --
+    unique(username) : VARCHAR(50)
+    not_null(password_hash) : VARCHAR(255)
+    not_null(rol) : ENUM
+    foreign_key(empleado_id) : INTEGER <<FK>>
+    not_null(activo) : BOOLEAN
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "horarios" as horarios {
+    primary_key(id) : SERIAL
+    --
+    foreign_key(empleado_id) : INTEGER <<FK>>
+    not_null(dia_semana) : ENUM
+    not_null(hora_entrada) : TIME
+    not_null(hora_salida) : TIME
+    tolerancia_minutos : INTEGER
+    fecha_inicio : DATE
+    fecha_fin : DATE
+    activo : BOOLEAN
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "asistencias" as asistencias {
+    primary_key(id) : SERIAL
+    --
+    foreign_key(empleado_id) : INTEGER <<FK>>
+    not_null(fecha) : DATE
+    hora_entrada : TIME
+    hora_salida : TIME
+    tipo_registro : ENUM
+    not_null(estado) : ENUM
+    minutos_retardo : INTEGER
+    observaciones : TEXT
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "tarjetas_nfc" as tarjetas_nfc {
+    primary_key(id) : SERIAL
+    --
+    unique(codigo_nfc) : VARCHAR(100)
+    foreign_key(empleado_id) : INTEGER <<FK>> <<UK>>
+    not_null(fecha_asignacion) : DATE
+    not_null(activa) : BOOLEAN
+    motivo_baja : TEXT
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "vacaciones" as vacaciones {
+    primary_key(id) : SERIAL
+    --
+    foreign_key(empleado_id) : INTEGER <<FK>>
+    not_null(fecha_inicio) : DATE
+    not_null(fecha_fin) : DATE
+    not_null(dias_solicitados) : INTEGER
+    not_null(estado) : ENUM
+    observaciones : TEXT
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "permisos" as permisos {
+    primary_key(id) : SERIAL
+    --
+    foreign_key(empleado_id) : INTEGER <<FK>>
+    not_null(fecha_inicio) : DATE
+    not_null(fecha_fin) : DATE
+    not_null(tipo) : ENUM
+    not_null(motivo) : TEXT
+    autorizado : BOOLEAN
+    autorizado_por : INTEGER
+    observaciones : TEXT
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "dias_festivos" as dias_festivos {
+    primary_key(id) : SERIAL
+    --
+    unique(fecha) : DATE
+    not_null(descripcion) : VARCHAR(200)
+    not_null(tipo) : ENUM
+    creado_en : TIMESTAMP
+    actualizado_en : TIMESTAMP
+}
+
+entity "bitacora" as bitacora {
+    primary_key(id) : SERIAL
+    --
+    foreign_key(usuario_id) : INTEGER <<FK>>
+    not_null(accion) : VARCHAR(100)
+    not_null(tabla_afectada) : VARCHAR(100)
+    registro_id : INTEGER
+    datos_anteriores : JSON
+    datos_nuevos : JSON
+    motivo : TEXT
+    ip_address : VARCHAR(45)
+    not_null(fecha_hora) : TIMESTAMP
+}
+
+' Relaciones
+empleados ||--o{ horarios : "tiene"
+empleados ||--o{ asistencias : "registra"
+empleados ||--o| tarjetas_nfc : "posee"
+empleados ||--o{ vacaciones : "solicita"
+empleados ||--o{ permisos : "solicita"
+empleados ||--o| usuarios : "es"
+usuarios ||--o{ bitacora : "genera"
+
+@enduml

@@ -1,0 +1,109 @@
+@startuml bd_normalizacion_erd
+title Modelo Entidad-Relación: Estructura de Base de Datos SIRAP
+
+skinparam monochrome true
+skinparam backgroundcolor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 100
+skinparam ranksep 80
+
+' ── NÚCLEO DEL SISTEMA ──────────────────────────────────────────────
+package "Gestión de Personal" {
+    entity "EMPLEADOS" as EMP {
+        * id : integer <<PK>>
+        --
+        * numero_empleado : varchar(20) <<UK>>
+        * nombre : varchar(100)
+        * apellidos : varchar(100)
+        * estatus : enum(activo, inactivo)
+        area : varchar(80)
+        puesto : varchar(80)
+    }
+
+    entity "HORARIOS" as HOR {
+        * id : integer <<PK>>
+        --
+        * empleadoId : integer <<FK>>
+        * diaSemana : enum
+        * horaEntrada : time
+        * horaSalida : time
+    }
+
+    entity "TARJETAS_NFC" as NFC {
+        * id : integer <<PK>>
+        --
+        * empleadoId : integer <<FK>>
+        * uid : varchar(50) <<UK>>
+        activa : boolean
+    }
+}
+
+' ── CONTROL DE ACCESO ────────────────────────────────────────────────
+package "Seguridad y Usuarios" {
+    entity "USUARIOS" as USR {
+        * id : integer <<PK>>
+        --
+        * username : varchar(50) <<UK>>
+        * passwordHash : text
+        * rol : enum(admin, supervisor, emp)
+        * empleadoId : integer <<FK, UK>>
+        activo : boolean
+    }
+}
+
+' ── REGISTROS OPERATIVOS ─────────────────────────────────────────────
+package "Operación Diaria" {
+    entity "ASISTENCIAS" as ASI {
+        * id : integer <<PK>>
+        --
+        * empleadoId : integer <<FK>>
+        * fecha : date
+        horaEntrada : time
+        horaSalida : time
+        estado : enum(puntual, retardo, falta)
+    }
+
+    entity "INCIDENCIAS" as INC {
+        * id : integer <<PK>>
+        --
+        * empleadoId : integer <<FK>>
+        tipo : enum(vacaciones, permiso)
+        fechaInicio : date
+        fechaFin : date
+    }
+}
+
+' ── AUDITORÍA Y MANTENIMIENTO ────────────────────────────────────────
+package "Soporte y Auditoría" {
+    entity "BITACORA" as BIT {
+        * id : integer <<PK>>
+        --
+        usuarioId : integer <<FK>>
+        accion : varchar(100)
+        tablaAfectada : varchar(100)
+        fechaHora : timestamp
+    }
+
+    entity "BACKUPS" as BAK {
+        * id : integer <<PK>>
+        --
+        usuarioId : integer <<FK>>
+        nombreArchivo : varchar(255)
+        fechaCreacion : timestamp
+    }
+}
+
+' ── RELACIONES PRINCIPALES ──────────────────────────────────────────
+EMP ||--o| USR : "está asociado a"
+EMP ||--o{ ASI : "registra"
+EMP ||--o{ HOR : "cumple"
+EMP ||--o{ NFC : "identificado por"
+EMP ||--o{ INC : "solicita"
+
+USR ||--o{ BIT : "genera"
+USR ||--o{ BAK : "realiza"
+
+@enduml
+
+@enduml

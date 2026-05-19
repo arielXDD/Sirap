@@ -1,0 +1,215 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg-primary);
+}
+
+.sidebar {
+  width: 260px;
+  background: #1e3a5f;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  transition: all var(--transition-normal);
+  z-index: 100;
+}
+
+.sidebarOpen {
+  width: 260px;
+}
+
+.sidebarClosed {
+  width: 70px;
+}
+
+.sidebarHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1a3352;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  transition: opacity var(--transition-normal);
+}
+
+.sidebarClosed .logo {
+  opacity: 0;
+}
+
+.toggleButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-size: 1rem;
+}
+
+.toggleButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.nav {
+  flex: 1;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 0.75rem var(--spacing-md);
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  font-weight: 500;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  position: relative;
+}
+
+.navItem:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.navItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: #60a5fa;
+  border-radius: 0 2px 2px 0;
+  transition: height var(--transition-fast);
+}
+
+.navItem:hover::before {
+  height: 50%;
+}
+
+.navItemActive {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-left: 3px solid #60a5fa;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding-left: calc(var(--spacing-md) - 3px);
+}
+
+.navItemActive::before {
+  display: none;
+}
+
+.navIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.main {
+  flex: 1;
+  margin-left: 260px;
+  transition: margin-left var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarClosed ~ .main {
+  margin-left: 70px;
+}
+
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+
+.headerContent {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.025em;
+}
+
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-right: var(--spacing-md);
+  border-right: 1px solid var(--color-border);
+}
+
+.userName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.userRole {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+.content {
+  flex: 1;
+  padding: var(--spacing-xl);
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.footer {
+  padding: var(--spacing-md) var(--spacing-xl);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  margin-top: auto;
+}

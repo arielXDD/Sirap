@@ -1,0 +1,63 @@
+@startuml roles_permisos
+title Modelo RBAC — Roles y Permisos (SIRAP)
+
+skinparam monochrome true
+skinparam backgroundcolor white
+skinparam shadowing false
+skinparam linetype polyline
+
+' ── Roles ───────────────────────────────────────────────────
+package "Rol: ADMINISTRADOR" {
+    rectangle "Gestión de Usuarios\n(CRUD + reset password)" as ADM_USR
+    rectangle "Backups y Restauración\n(crear, descargar, restaurar)" as ADM_BAK
+    rectangle "Desbloquear Cuentas" as ADM_UNL
+    rectangle "CRUD Empleados\n(crear, editar, eliminar)" as ADM_EMP
+    rectangle "Reportes Completos\n(PDF, Excel, rango libre)" as ADM_REP
+    rectangle "Asistencias\n(manual, editar, eliminar)" as ADM_ASI
+    rectangle "Generar Faltas\nAutomáticas" as ADM_FAL
+    rectangle "Días Festivos\n(CRUD)" as ADM_DFE
+    rectangle "Horarios\n(CRUD)" as ADM_HOR
+    rectangle "Tarjetas NFC\n(asignar, revocar)" as ADM_NFC
+}
+
+package "Rol: SUPERVISOR" {
+    rectangle "Registrar Asistencia\n(manual por empleado)" as SUP_ASI
+    rectangle "Ver Empleados\n(solo consulta)" as SUP_EMP
+    rectangle "Reportes de Área\n(PDF, Excel con fechas)" as SUP_REP
+    rectangle "Stats del Día\ny Gráficas" as SUP_STA
+}
+
+package "Rol: EMPLEADO" {
+    rectangle "Ver sus propias\nAsistencias" as EMP_ASI
+    rectangle "Sin acceso\nadministrativo" as EMP_NOA
+}
+
+' ── Seguridad transversal ────────────────────────────────────
+package "Seguridad Global (todos los roles)" {
+    rectangle "Autenticación JWT\n(token 24h)" as SEC_JWT
+    rectangle "Rate Limiting\n(60 req/min por IP)" as SEC_RL
+    rectangle "Bloqueo al 5°\nintento fallido" as SEC_BLK
+    rectangle "Bitácora Automática\n(AuditInterceptor)" as SEC_AUD
+    rectangle "Bcrypt Hashing\n(10 rondas)" as SEC_BCR
+}
+
+note bottom of SEC_AUD
+  Registra: acción, tabla, IP,
+  datos anteriores y nuevos
+  en formato JSON
+end note
+
+note right of ADM_BAK
+  Endpoints exclusivos:
+  POST /api/backups
+  GET  /api/backups/descargar/:id
+  POST /api/backups/restaurar
+end note
+
+note right of SUP_REP
+  Endpoints compartidos:
+  GET /api/asistencias/export/excel
+  GET /api/asistencias/export/pdf
+end note
+
+@enduml
